@@ -1,16 +1,15 @@
 import socket, sys, random, string
 import time, os
-from utils import sendfolders, recvfolders, readline
+import utils
 
 if __name__ == "__main__":
 	name, port = sys.argv
 	server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	server.bind(('', int(port)))
 	server.listen(5)
-	clients = set()
+	clients = {}
 	while True:
 		client_socket, client_address = server.accept()
-		client_socket.settimeout(2)
 		print('Connection from: ', client_address)
 		data = client_socket.recv(128).decode('utf-8')
 		if data == 'Hi' :
@@ -25,9 +24,10 @@ if __name__ == "__main__":
 		else :
 			try :
 				sendfolders(client_socket, data)
+                recvchanges(client_socket, data)
 			except:
 				print("send failed")
-		"""
+		""""
 		data = ''
 		changeset = set()
 		try :
@@ -36,5 +36,5 @@ if __name__ == "__main__":
 				changeset.add(data)
 				data = readline(client_socket)
 		"""
+
 		print('Client disconnected')
-		break
