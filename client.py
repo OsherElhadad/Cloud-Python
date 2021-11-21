@@ -1,8 +1,11 @@
-import socket, sys
-import time, os
-from utils import sendfolders, recvfolders, readline, eventhappenend
+import socket
+import sys
+import time
+import os
+from utils import sendfolders, recvfolders, eventhappenend
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
+chunk = 1000000
 eventset = set()
 
 
@@ -33,7 +36,7 @@ if __name__ == "__main__":
 	directory = sys.argv[3]
 	timesleep = sys.argv[4]
 	key = ''
-	if len(sys.argv) > 5 :
+	if len(sys.argv) > 5:
 		key = sys.argv[5]
 	my_event = PatternMatchingEventHandler(["*"], None, False, True)
 	
@@ -46,11 +49,11 @@ if __name__ == "__main__":
 	my_observer.schedule(my_event, directory, recursive=True)
 	my_observer.start()
 	first = 1
-
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	try:
 		while True:
-			s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			# s.connect('10.0.2.7', 12345)
+			s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			s.connect((ip, int(port)))
 			s.settimeout(5)
 			if first == 1:
@@ -60,11 +63,16 @@ if __name__ == "__main__":
 				else:
 					s.send('Hi'.encode('utf-8'))
 					key = s.recv(128).decode('utf-8')
-					os.makedirs(key, exist_ok=True)
+					with open("key_file", 'wb') as f:
+						f.write(key.encode('utf-8'))
 					sendfolders(s, directory)
-
-			for event in eventset:
-				eventhappenend(event[2], s, directory, event[0], event[1])
+			else:
+				key = ''
+				with open("key_file", 'rb') as f:
+					key = f.read(128)
+				s.send(key)
+				for event in eventset:
+					eventhappenend(event[2], s, directory, event[0], event[1])
 
 			eventset.clear()
 			
