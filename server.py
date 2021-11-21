@@ -1,7 +1,10 @@
-import socket, sys, random, string
-import time, os
-import utils
-from utils import sendfolders, recvfolders, recvchanges, readline
+import socket
+import sys
+import random
+import string
+import os
+import time
+from utils import sendfolders, recvfolders, recvchanges
 
 if __name__ == "__main__":
 	name, port = sys.argv
@@ -21,10 +24,10 @@ if __name__ == "__main__":
 			try:
 				recvfolders(client_socket, key)
 			except:
-				print("recieve failed")
+				print("send failed")
 		else:
 			try:
-				sendfolders(client_socket, data)
+				#sendfolders(client_socket, data)
 				recvchanges(client_socket, data)
 			except:
 				print("send failed")
