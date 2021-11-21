@@ -1,6 +1,5 @@
 import os
 import shutil
-import socket
 chunk = 1000000
 
 
@@ -46,9 +45,9 @@ def recvchanges(sock, foldername):
 
 
 def recvfolders(sock, foldername):
+	count = 0
+	seperator = os.sep
 	with sock:
-		count = 0
-		seperator = os.sep
 		while True:
 			rec = readline(sock)
 			if not rec:
@@ -76,7 +75,8 @@ def recvfolders(sock, foldername):
 				while length:
 					chunkdata = min(length, chunk)
 					data = sock.recv(chunkdata)
-					if not data: break
+					if not data:
+						break
 					f.write(data)
 					length -= len(data)
 				else:  # only runs if while doesn't break and length==0
@@ -89,9 +89,9 @@ def recvfolders(sock, foldername):
 
 
 def readline(sock):
-	rec = sock.recv(1).encode('utf-8')
+	rec = sock.recv(1).decode('utf-8')
 	while '\n' not in rec and rec:
-		rec += sock.recv(1).encode('utf-8')
+		rec += sock.recv(1).decode('utf-8')
 	if rec:
 		return rec[:-1]
 	return ''
@@ -213,11 +213,11 @@ def eventhappenend(option, s, directory, src, dst):
 	return switch.get(option)
 
 
-def eventrecieved(option, s):
+def eventrecieved(option, s, foldername):
 	switch = {
-		'create': recvcreate(s),
+		'create': recvcreate(s, foldername),
 		'delete': recvdelete(s),
 		'move': recvmove(s),
-		'modify': recvcreate(s)  # same like the function recieve create
+		'modify': recvcreate(s, foldername)  # same like the function recieve create
 		}
 	return switch.get(option)
