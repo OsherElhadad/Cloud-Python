@@ -1,6 +1,7 @@
 import socket, sys, random, string
 import time, os
 import utils
+from utils import sendfolders, recvfolders, recvchanges, readline
 
 if __name__ == "__main__":
 	name, port = sys.argv
@@ -12,19 +13,19 @@ if __name__ == "__main__":
 		client_socket, client_address = server.accept()
 		print('Connection from: ', client_address)
 		data = client_socket.recv(128).decode('utf-8')
-		if data == 'Hi' :
+		if data == 'Hi':
 			key = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(128))
-			while os.path.isdir(key) :
+			while os.path.isdir(key):
 				key = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(128))
 			client_socket.send(key.encode('utf-8'))
-			try :
+			try:
 				recvfolders(client_socket, key)
 			except:
 				print("recieve failed")
-		else :
-			try :
+		else:
+			try:
 				sendfolders(client_socket, data)
-                recvchanges(client_socket, data)
+				recvchanges(client_socket, data)
 			except:
 				print("send failed")
 		""""
