@@ -2,32 +2,36 @@ import socket
 import sys
 import time
 import os
-from utils import sendfolders, recvfolders, eventhappenend
+from utils import sendfolders, recvfolders, eventhappenend, readline, recvchanges
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 chunk = 1000000
 eventset = set()
-
+observe = True
 
 def on_created(event):
-	eventset.add((event.src_path, '', 'created'))
-	print(f"Someone created {event.src_path}!")
+	if observe:
+		eventset.add((event.src_path, '', 'created'))
+		print(f"Someone created {event.src_path}!")
 
 
 def on_deleted(event):
-	eventset.add((event.src_path, '', 'deleted'))
-	print(f"Someone deleted {event.src_path}!")
+	if observe:
+		eventset.add((event.src_path, '', 'deleted'))
+		print(f"Someone deleted {event.src_path}!")
 
 
 def on_modified(event):
-	if not os.path.isdir(event.src_path):
-		eventset.add((event.src_path, '', 'modified'))
-		print(f"hey, {event.src_path} has been modified")
+	if observe:
+		if not os.path.isdir(event.src_path):
+			eventset.add((event.src_path, '', 'modified'))
+			print(f"hey, {event.src_path} has been modified")
 
 
 def on_moved(event):
-	eventset.add((event.src_path, event.dest_path, 'moved'))
-	print(f"someone moved {event.src_path} to {event.dest_path}")
+	if observe:
+		eventset.add((event.src_path, event.dest_path, 'moved'))
+		print(f"someone moved {event.src_path} to {event.dest_path}")
 
 
 if __name__ == "__main__":
@@ -49,7 +53,7 @@ if __name__ == "__main__":
 	my_observer.schedule(my_event, directory, recursive=True)
 	my_observer.start()
 	first = 1
-	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	computerid = 0
 	try:
 		while True:
 			# s.connect('10.0.2.7', 12345)
@@ -58,25 +62,40 @@ if __name__ == "__main__":
 			s.settimeout(5)
 			if first == 1:
 				if len(sys.argv) > 5:
-					s.send(key.encode('utf-8'))
-					recvfolders(s, directory)
+					s.send(b'n' + key.encode('utf-8'))
+					try:
+						computerid = s.recv(7).decode('utf-8')
+						recvfolders(s, directory)
+					except:
+						print("receive folders failed")
 				else:
 					s.send('Hi'.encode('utf-8'))
+					computerid = s.recv(7).decode('utf-8')
 					key = s.recv(128).decode('utf-8')
 					with open("key_file", 'wb') as f:
 						f.write(key.encode('utf-8'))
-					sendfolders(s, directory)
+					try:
+						sendfolders(s, directory)
+					except:
+						print("send folders failed")
 			else:
 				key = ''
 				with open("key_file", 'rb') as f:
 					key = f.read(128)
-				s.send(key)
+				s.send(b'o' + key)
+				s.send(computerid.encode('utf-8'))
+				option = readline(s)
+				if option == 'updates from another computer':
+					run = False
+					recvchanges(s, directory)
+					run = True
+				s.send(str(len(eventset)).encode('utf-8') + b'\n')
 				for event in eventset:
 					eventhappenend(event[2], s, directory, event[0], event[1])
 
 			eventset.clear()
-			
 			first = 0
+			s.close()
 			time.sleep(int(timesleep))
 	except KeyboardInterrupt:
 		my_observer.stop()
