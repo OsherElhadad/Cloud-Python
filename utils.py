@@ -11,7 +11,7 @@ def sendfolders(client, keyfoldername):
 				dirname = os.path.join(path, d)
 				relpathdir = os.path.relpath(dirname, keyfoldername)
 				dirsize = 0
-				client.send(relpathdir.encode('utf-8') + b'\n')
+				client.send(b'd' + relpathdir.encode('utf-8') + b'\n')
 				client.send(str(dirsize).encode('utf-8') + b'\n')
 
 			for file1 in files:
@@ -22,7 +22,7 @@ def sendfolders(client, keyfoldername):
 				print(f'Sending {relpath}')
 
 				with open(filename, 'rb') as f:
-					client.send(relpath.encode('utf-8') + b'\n')
+					client.send(b'f' + relpath.encode('utf-8') + b'\n')
 					client.send(str(filesize).encode('utf-8') + b'\n')
 
 					# Send the file in chunks so large files can be handled.
@@ -46,46 +46,19 @@ def recvchanges(sock, foldername):
 
 def recvfolders(sock, foldername):
 	count = 0
-	seperator = os.sep
 	with sock:
 		while True:
-			rec = readline(sock)
-			if not rec:
-				break
 			if count == 0:
-				seperator = rec
-				rec = readline(sock)
-			count = count + 1
-
-			filename = rec.strip()
-			length = int(readline(sock))
-			path = foldername
-			for dirname in filename.split(seperator):
-				path = os.path.join(path, dirname)
-			print(f'Downloading {path}...\n  Expecting {length:,} bytes...', end='', flush=True)
-
-			if length == 0:
-				os.makedirs(path, exist_ok=True)
-				print('Complete')
+				flag = recvcreate(sock, foldername, True)
+				count = 1
+			else:
+				flag = recvcreate(sock, foldername, False)
+			if flag == 1:
 				continue
-			os.makedirs(os.path.dirname(path), exist_ok=True)
-
-			# Read the data in chunks so it can handle large files.
-			with open(path, 'wb') as f:
-				while length:
-					chunkdata = min(length, chunk)
-					data = sock.recv(chunkdata)
-					if not data:
-						break
-					f.write(data)
-					length -= len(data)
-				else:  # only runs if while doesn't break and length==0
-					print('Complete')
-					continue
 
 			# socket was closed early.
 			print('Incomplete')
-			break 
+			break
 
 
 def readline(sock):
@@ -97,23 +70,24 @@ def readline(sock):
 	return ''
 
 
-def recvcreate(s, keyfoldername):
+def recvcreate(s, keyfoldername, flag=True, seperator=os.sep):
 	rec = readline(s)
 	if not rec:
-		return
-	seperator = rec
-	rec = readline(s)
-	filename = rec.strip()
+		return -1
+	if flag is True:
+		seperator = rec
+		rec = readline(s)
+	filename = rec[1:].strip()
 	length = int(readline(s))
 	path = keyfoldername
 	for dirname in filename.split(seperator):
 		path = os.path.join(path, dirname)
 	print(f'Downloading {path}...\n  Expecting {length:,} bytes...', end='', flush=True)
 
-	if length == 0:
+	if rec[0] == 'd':
 		os.makedirs(path, exist_ok=True)
 		print('Complete')
-		return
+		return 1
 	os.makedirs(os.path.dirname(path), exist_ok=True)
 
 	# Read the data in chunks so it can handle large files.
@@ -122,11 +96,13 @@ def recvcreate(s, keyfoldername):
 			chunkdata = min(length, chunk)
 			data = s.recv(chunkdata)
 			if not data:
-				return
+				break
 			f.write(data)
 			length -= len(data)
 		else:  # only runs if while doesn't break and length==0
 			print('Complete')
+			return 1
+	return -1
 
 
 def recvdelete(s):
