@@ -134,7 +134,7 @@ def sendcreate(s, keyfoldername, src):
 	if os.path.isdir(src):
 		relpathdir = os.path.relpath(src, keyfoldername)
 		dirsize = 0
-		s.send(relpathdir.encode('utf-8') + b'\n')
+		s.send(b'd' + relpathdir.encode('utf-8') + b'\n')
 		s.send(str(dirsize).encode('utf-8') + b'\n')
 
 	else:
@@ -143,7 +143,7 @@ def sendcreate(s, keyfoldername, src):
 
 		print(f'Sending {relpath}')
 		with open(src, 'rb') as f:
-			s.send(relpath.encode('utf-8') + b'\n')
+			s.send(b'f' + relpath.encode('utf-8') + b'\n')
 			s.send(str(filesize).encode('utf-8') + b'\n')
 
 			# Send the file in chunks so large files can be handled.
@@ -160,7 +160,7 @@ def sendmodify(s, keyfoldername, src):
 	if os.path.isdir(src):
 		relpathdir = os.path.relpath(src, keyfoldername)
 		dirsize = 0
-		s.send(relpathdir.encode('utf-8') + b'\n')
+		s.send(b'd' + relpathdir.encode('utf-8') + b'\n')
 		s.send(str(dirsize).encode('utf-8') + b'\n')
 
 	else:
@@ -169,7 +169,7 @@ def sendmodify(s, keyfoldername, src):
 
 		print(f'Sending {relpath}')
 		with open(src, 'rb') as f:
-			s.send(relpath.encode('utf-8') + b'\n')
+			s.send(b'f' + relpath.encode('utf-8') + b'\n')
 			s.send(str(filesize).encode('utf-8') + b'\n')
 
 			# Send the file in chunks so large files can be handled.
@@ -180,20 +180,22 @@ def sendmodify(s, keyfoldername, src):
 
 
 def eventhappenend(option, s, directory, src, dst):
-	switch = {
-		'created': sendcreate(s, directory, src),
-		'deleted': senddelete(s, directory),
-		'moved': sendmove(s, src, dst),
-		'modified': sendmodify(s, directory, src)
-		}
-	return switch.get(option)
+	if option == 'created':
+		return sendcreate(s, directory, src)
+	if option == 'deleted':
+		return senddelete(s, directory)
+	if option == 'moved':
+		return sendmove(s, src, dst)
+	if option == 'modified':
+		return sendmodify(s, directory, src)
 
 
 def eventrecieved(option, s, foldername):
-	switch = {
-		'create': recvcreate(s, foldername),
-		'delete': recvdelete(s),
-		'move': recvmove(s),
-		'modify': recvcreate(s, foldername)  # same like the function recieve create
-		}
-	return switch.get(option)
+	if option == 'create':
+		return recvcreate(s, foldername)
+	if option == 'delete':
+		return recvdelete(s)
+	if option == 'move':
+		return recvmove(s)
+	if option == 'modify':
+		return recvcreate(s, foldername)
