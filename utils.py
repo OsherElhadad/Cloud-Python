@@ -105,56 +105,35 @@ def recvcreate(s, keyfoldername, flag=True, seperator=os.sep):
 	return -1
 
 
-def recvdelete(s):
-	rec = readline(s)
-	os.remove(rec)
+def recvdelete(s, keyfoldername):
+	seperator = readline(s)
+	path = readline(s)
+	for name in path.split(seperator):
+		keyfoldername = os.path.join(keyfoldername, name)
+	print(f'Deleting')
+	if os.path.isdir(keyfoldername):
+		os.rmdir(keyfoldername)
+	else:
+		os.remove(keyfoldername)
 
 
-def recvmove(s):
-	src = readline(s)
-	dst = readline(s)
-	shutil.move(src, dst)
+def recvmove(s, keyfoldername):
+	recvcreate(s, keyfoldername)
+	recvdelete(s, keyfoldername)
 
 
 def senddelete(s, src):
-	s.send('delete'.encode('utf-8') + b'\n')
+	s.send(os.sep.encode() + b'\n')
 	s.send(src.encode('utf-8') + b'\n')
 
 
 def sendmove(s, src, dst):
-	s.send('moved'.encode('utf-8') + b'\n')
-	s.send(src.encode('utf-8') + b'\n')
-	s.send(dst.encode('utf-8') + b'\n')
+	pass
+	# senddelete(s, keyfoldername, src)
+	# sendcreate(s, keyfoldername, dst)
 
 
 def sendcreate(s, keyfoldername, src):
-	s.send('create'.encode('utf-8') + b'\n')
-	s.send(os.sep.encode() + b'\n')
-
-	if os.path.isdir(src):
-		relpathdir = os.path.relpath(src, keyfoldername)
-		dirsize = 0
-		s.send(b'd' + relpathdir.encode('utf-8') + b'\n')
-		s.send(str(dirsize).encode('utf-8') + b'\n')
-
-	else:
-		relpath = os.path.relpath(src, keyfoldername)
-		filesize = os.path.getsize(src)
-
-		print(f'Sending {relpath}')
-		with open(src, 'rb') as f:
-			s.send(b'f' + relpath.encode('utf-8') + b'\n')
-			s.send(str(filesize).encode('utf-8') + b'\n')
-
-			# Send the file in chunks so large files can be handled.
-			data = f.read(chunk)
-			while data:
-				s.send(data)
-				data = f.read(chunk)
-
-
-def sendmodify(s, keyfoldername, src):
-	s.send('modify'.encode('utf-8') + b'\n')
 	s.send(os.sep.encode() + b'\n')
 
 	if os.path.isdir(src):
@@ -181,21 +160,27 @@ def sendmodify(s, keyfoldername, src):
 
 def eventhappenend(option, s, directory, src, dst):
 	if option == 'created':
+		s.send('create'.encode('utf-8') + b'\n')
 		return sendcreate(s, directory, src)
 	if option == 'deleted':
-		return senddelete(s, directory)
+		s.send('delete'.encode('utf-8') + b'\n')
+		return senddelete(s, os.path.relpath(src, directory))
 	if option == 'moved':
-		return sendmove(s, src, dst)
+		s.send('move'.encode('utf-8') + b'\n')
+		sendcreate(s, directory, dst)
+		return senddelete(s, os.path.relpath(src, directory))
 	if option == 'modified':
-		return sendmodify(s, directory, src)
+		return
+		# s.send('modify'.encode('utf-8') + b'\n')
+		# return sendcreate(s, directory, src)
 
 
 def eventrecieved(option, s, foldername):
 	if option == 'create':
 		return recvcreate(s, foldername)
 	if option == 'delete':
-		return recvdelete(s)
+		return recvdelete(s, foldername)
 	if option == 'move':
-		return recvmove(s)
+		return recvmove(s, foldername)
 	if option == 'modify':
 		return recvcreate(s, foldername)
