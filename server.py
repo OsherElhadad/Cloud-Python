@@ -3,7 +3,6 @@ import sys
 import random
 import string
 import os
-import time
 from utils import sendfolders, recvfolders, recvchanges
 
 if __name__ == "__main__":
@@ -24,7 +23,7 @@ if __name__ == "__main__":
 			try:
 				recvfolders(client_socket, key)
 			except:
-				print("send failed")
+				print("receive failed")
 		else:
 			try:
 				#sendfolders(client_socket, data)
