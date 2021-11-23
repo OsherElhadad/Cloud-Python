@@ -17,7 +17,6 @@ def get_computer_id(map_clients):
 			if id in client_changes.keys():
 				flag = True
 				break
-	map_key_of_map_client_and_changes[key] = {computer_id: None}
 	return id
 
 
@@ -48,6 +47,7 @@ if __name__ == "__main__":
 			# rand a computer id and client id and send it to the client
 			computer_id = get_computer_id(map_key_of_map_client_and_changes)
 			key = get_client_id()
+			map_key_of_map_client_and_changes[key] = {computer_id: None}
 			client_socket.send(computer_id.encode('utf-8'))
 			client_socket.send(key.encode('utf-8'))
 
@@ -62,7 +62,7 @@ if __name__ == "__main__":
 			if data[0] == 'n':
 				# rand a computer id
 				computer_id = get_computer_id(map_key_of_map_client_and_changes)
-
+				map_key_of_map_client_and_changes[key][computer_id] = None
 				# send the computer its new id
 				try:
 					client_socket.send(computer_id.encode('utf-8'))
@@ -73,7 +73,7 @@ if __name__ == "__main__":
 			# existing computer
 			else:
 				computer_id = client_socket.recv(7).decode('utf-8')
-
+				print(map_key_of_map_client_and_changes)
 				# send the changes in the back-up folder of the client account
 				if map_key_of_map_client_and_changes[key][computer_id] is not None:
 					client_socket.send('updates from another computer'.encode('utf8') + b'\n')
@@ -92,5 +92,3 @@ if __name__ == "__main__":
 						print("receive changes failed")
 
 		print('Client disconnected')
-
-
