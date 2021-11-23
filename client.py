@@ -7,36 +7,32 @@ from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
 chunk = 1000000
-eventset = set()
-observe = True
+eventlist = list()
+
 
 # notify about creating a new file in the back-up folder
 def on_created(event):
-    if observe:
-        eventset.add((event.src_path, '', 'created'))
-        print(f"Someone created {event.src_path}!")
+    eventlist.append((event.src_path, '', 'created'))
+    print(f"Someone created {event.src_path}!")
 
 
 # notify about deleting a file in the back-up folder
 def on_deleted(event):
-    if observe:
-        eventset.add((event.src_path, '', 'deleted'))
-        print(f"Someone deleted {event.src_path}!")
+    eventlist.append((event.src_path, '', 'deleted'))
+    print(f"Someone deleted {event.src_path}!")
 
 
 # notify about modify a file in the back-up folder
 def on_modified(event):
-    if observe:
-        if not os.path.isdir(event.src_path):
-            eventset.add((event.src_path, '', 'modified'))
-            print(f"hey, {event.src_path} has been modified")
+    if not os.path.isdir(event.src_path):
+        eventlist.append((event.src_path, '', 'modified'))
+        print(f"hey, {event.src_path} has been modified")
 
 
 # notify about move a file in the back-up folder
 def on_moved(event):
-    if observe:
-        eventset.add((event.src_path, event.dest_path, 'moved'))
-        print(f"someone moved {event.src_path} to {event.dest_path}")
+    eventlist.append((event.src_path, event.dest_path, 'moved'))
+    print(f"someone moved {event.src_path} to {event.dest_path}")
 
 
 # connect the computer in the first time to the server of an existing client
@@ -47,6 +43,7 @@ def first_connection_new_computer(s, arguments):
         computer_id = s.recv(7).decode('utf-8')
         recvfolders(s, directory)
     except:
+        computer_id = ''
         print("receive folders failed")
     return key, computer_id
 
@@ -69,7 +66,7 @@ def first_connection_new_client(s):
 def get_socket(ip, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, int(port)))
-    s.settimeout(3)
+    s.settimeout(3000)
     return s
 
 
@@ -88,11 +85,6 @@ if __name__ == "__main__":
     my_event.on_modified = on_modified
     my_event.on_moved = on_moved
 
-    # define an observer for the changes in the back-up directory of the client
-    my_observer = Observer()
-    my_observer.schedule(my_event, directory, recursive=True)
-    my_observer.start()
-
     s = get_socket(ip, port)
 
     # connect the client to the server
@@ -101,6 +93,10 @@ if __name__ == "__main__":
     else:
         key, computer_id = first_connection_new_client(s)
 
+    # define an observer for the changes in the back-up directory of the client
+    my_observer = Observer()
+    my_observer.schedule(my_event, directory, recursive=True)
+    my_observer.start()
     try:
         while True:
 
@@ -110,21 +106,26 @@ if __name__ == "__main__":
             s = get_socket(ip, port)
 
             # connect the client again
-            s.send(b'o' + key)
+            s.send(b'o' + key.encode('utf-8'))
             s.send(computer_id.encode('utf-8'))
             option = readline(s)
 
             # get new update from the server
             if option == 'updates from another computer':
-                run = False
+                my_observer.stop()
                 recvchanges(s, directory)
-                run = True
+
+                # define an observer for the changes in the back-up directory of the client
+                my_observer = Observer()
+                my_observer.schedule(my_event, directory, recursive=True)
+                my_observer.start()
 
             # send new changes in the back-up folder of the client in this computer
-            s.send(str(len(eventset)).encode('utf-8') + b'\n')
-            for event in eventset:
+            s.send(str(len(eventlist)).encode('utf-8') + b'\n')
+            print(eventlist)
+            for event in eventlist:
                 eventhappenend(event[2], s, directory, event[0], event[1])
-            eventset.clear()
+            eventlist.clear()
 
     except KeyboardInterrupt:
         my_observer.stop()
