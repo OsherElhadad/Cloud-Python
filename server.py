@@ -6,6 +6,7 @@ import os
 from utils import sendfolders, recvfolders, recvchanges, eventhappenend, readline
 
 
+# get new id for a new computer
 def get_computer_id(map_clients):
 	id = ''
 	flag = True
@@ -13,14 +14,14 @@ def get_computer_id(map_clients):
 		id = ''.join(random.choice(string.digits) for i in range(7))
 		flag = False
 		for client_changes in map_clients.values():
-			for cid in client_changes.keys():
-				if cid == id:
-					flag = True
-					break
+			if id in client_changes.keys():
+				flag = True
+				break
 	map_key_of_map_client_and_changes[key] = {computer_id: None}
 	return id
 
 
+# get new id for a new client
 def get_client_id():
 	key = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(128))
 	while os.path.isdir(key):
@@ -32,7 +33,7 @@ if __name__ == "__main__":
 	name, port = sys.argv
 	server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	server.bind(('', int(port)))
-	server.listen(5)
+	server.listen(3)
 	map_key_of_map_client_and_changes = {}
 	computer_id = 0
 	key = ''

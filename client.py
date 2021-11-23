@@ -10,7 +10,6 @@ chunk = 1000000
 eventset = set()
 observe = True
 
-
 # notify about creating a new file in the back-up folder
 def on_created(event):
     if observe:

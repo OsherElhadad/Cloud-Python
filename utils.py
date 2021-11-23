@@ -3,36 +3,39 @@ import os
 chunk = 1000000
 
 
-def sendfolders(s, keyfoldername):
+# send all the back-up folder to the socket
+def sendfolders(s, key_folder_name):
     with s:
         s.send(os.sep.encode() + b'\n')
-        for path, dirs, files in os.walk(keyfoldername):
+        for path, dirs, files in os.walk(key_folder_name):
             for d in dirs:
-                sendfolder(s, path, d, keyfoldername)
+                sendfolder(s, path, d, key_folder_name)
             for file1 in files:
-                sendfile(s, keyfoldername, os.path.join(path, file1))
+                sendfile(s, key_folder_name, os.path.join(path, file1))
     print('Done')
 
 
-def recvchanges(sock, foldername, mapkeyofmapclientandchanges=None, clientid=0):
+# receive all the changes in the back-up folder from the socket
+def recvchanges(sock, folder_name, map_key_of_map_client_and_changes=None, computer_id=0):
     with sock:
         while True:
             rec = readline(sock)
             if not rec:
                 break
             change = rec.strip()
-            eventrecieved(change, sock, foldername, mapkeyofmapclientandchanges, clientid)
+            eventrecieved(change, sock, folder_name, map_key_of_map_client_and_changes, computer_id)
 
 
-def recvfolders(sock, foldername):
+# receive all the back-up folder from the socket
+def recvfolders(sock, folder_name):
     count = 0
     with sock:
         while True:
             if count == 0:
-                flag = recvcreate(sock, foldername, True)
+                flag = recvcreate(sock, folder_name, True)
                 count = 1
             else:
-                flag = recvcreate(sock, foldername, False)
+                flag = recvcreate(sock, folder_name, False)
             if flag == 1:
                 continue
 
@@ -41,31 +44,33 @@ def recvfolders(sock, foldername):
             break
 
 
-def readline(sock):
-    rec = sock.recv(1).decode('utf-8')
+# read a line from the socket
+def readline(s):
+    rec = s.recv(1).decode('utf-8')
     while '\n' not in rec and rec:
-        rec += sock.recv(1).decode('utf-8')
+        rec += s.recv(1).decode('utf-8')
     if rec:
         return rec[:-1]
     return ''
 
 
-def recvcreate(s, keyfoldername, flag=True, seperator=os.sep, mapkeyofmapclientandchanges=None, clientid=0):
+# receive a report about a new file in the client's folder
+def recvcreate(s, key_folder_name, flag=True, separator=os.sep, map_key_of_map_client_and_changes=None, computer_id=0):
     rec = readline(s)
     if not rec:
         return -1
     if flag is True:
-        seperator = rec
+        separator = rec
         rec = readline(s)
     filename = rec[1:].strip()
     length = int(readline(s))
-    path = keyfoldername
-    for dirname in filename.split(seperator):
+    path = key_folder_name
+    for dirname in filename.split(separator):
         path = os.path.join(path, dirname)
-    if mapkeyofmapclientandchanges is not None:
-        for cid in mapkeyofmapclientandchanges[keyfoldername].keys():
-            if cid != clientid:
-                mapkeyofmapclientandchanges[keyfoldername][cid].add((path, '', 'created'))
+    if map_key_of_map_client_and_changes is not None:
+        for cid in map_key_of_map_client_and_changes[key_folder_name].keys():
+            if cid != computer_id:
+                map_key_of_map_client_and_changes[key_folder_name][cid].add((path, '', 'created'))
     print(f'Downloading {path}...\n  Expecting {length:,} bytes...', end='', flush=True)
 
     if rec[0] == 'd':
@@ -89,16 +94,18 @@ def recvcreate(s, keyfoldername, flag=True, seperator=os.sep, mapkeyofmapclienta
     return -1
 
 
-def sendfolder(s, path, d, keyfoldername):
+# send a folder
+def sendfolder(s, path, d, key_folder_name):
     dirname = os.path.join(path, d)
-    relpathdir = os.path.relpath(dirname, keyfoldername)
+    relpathdir = os.path.relpath(dirname, key_folder_name)
     dirsize = 0
     s.send(b'd' + relpathdir.encode('utf-8') + b'\n')
     s.send(str(dirsize).encode('utf-8') + b'\n')
 
 
-def sendfile(s, keyfoldername, filename):
-    relpath = os.path.relpath(filename, keyfoldername)
+# send a file
+def sendfile(s, key_folder_name, filename):
+    relpath = os.path.relpath(filename, key_folder_name)
     filesize = os.path.getsize(filename)
     print(f'Sending {relpath}')
 
@@ -113,45 +120,46 @@ def sendfile(s, keyfoldername, filename):
             data = f.read(chunk)
 
 
-def recvdelete(s, keyfoldername):
+# receive a report about a delete in the client's folder
+def recvdelete(s, key_folder_name):
     seperator = readline(s)
     path = readline(s)
     for name in path.split(seperator):
-        keyfoldername = os.path.join(keyfoldername, name)
+        key_folder_name = os.path.join(key_folder_name, name)
     print(f'Deleting')
-    if os.path.isdir(keyfoldername):
-        os.rmdir(keyfoldername)
+    if os.path.isdir(key_folder_name):
+        os.rmdir(key_folder_name)
     else:
-        os.remove(keyfoldername)
+        os.remove(key_folder_name)
 
 
+# receive a report about a move in the client's folder
 def recvmove(s, keyfoldername):
     recvcreate(s, keyfoldername)
     recvdelete(s, keyfoldername)
 
 
+# send about a file deleted
 def senddelete(s, src):
     s.send(os.sep.encode() + b'\n')
     s.send(src.encode('utf-8') + b'\n')
 
 
-# senddelete(s, keyfoldername, src)
-# sendcreate(s, keyfoldername, dst)
-
-
-def sendcreate(s, keyfoldername, src):
+# send about a new file created
+def sendcreate(s, key_folder_name, src):
     s.send(os.sep.encode() + b'\n')
 
     if os.path.isdir(src):
-        relpathdir = os.path.relpath(src, keyfoldername)
+        relpathdir = os.path.relpath(src, key_folder_name)
         dirsize = 0
         s.send(b'd' + relpathdir.encode('utf-8') + b'\n')
         s.send(str(dirsize).encode('utf-8') + b'\n')
 
     else:
-        sendfile(s, keyfoldername, src)
+        sendfile(s, key_folder_name, src)
 
 
+# call the function according to the report we want to send
 def eventhappenend(option, s, directory, src, dst):
     if option == 'created':
         s.send('create'.encode('utf-8') + b'\n')
@@ -167,13 +175,10 @@ def eventhappenend(option, s, directory, src, dst):
         return
 
 
-# s.send('modify'.encode('utf-8') + b'\n')
-# return sendcreate(s, directory, src)
-
-
-def eventrecieved(option, s, foldername, mapkeyofmapclientandchanges=None, clientid=0):
+# call the function according to the report we got
+def eventrecieved(option, s, foldername, mapkeyofmapclientandchanges=None, computer_id=0):
     if option == 'create':
-        return recvcreate(s, foldername, True, os.sep, mapkeyofmapclientandchanges, clientid)
+        return recvcreate(s, foldername, True, os.sep, mapkeyofmapclientandchanges, computer_id)
     if option == 'delete':
         return recvdelete(s, mapkeyofmapclientandchanges)
     if option == 'move':
