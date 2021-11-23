@@ -70,7 +70,10 @@ def recvcreate(s, key_folder_name, flag=True, separator=os.sep, map_key_of_map_c
     if map_key_of_map_client_and_changes is not None:
         for cid in map_key_of_map_client_and_changes[key_folder_name].keys():
             if cid != computer_id:
-                map_key_of_map_client_and_changes[key_folder_name][cid].add((path, '', 'created'))
+                if map_key_of_map_client_and_changes[key_folder_name][cid] is not None:
+                    map_key_of_map_client_and_changes[key_folder_name][cid].append((path, '', 'created'))
+                else:
+                    map_key_of_map_client_and_changes[key_folder_name][cid] = [(path, '', 'created')]
     print(f'Downloading {path}...\n  Expecting {length:,} bytes...', end='', flush=True)
 
     if rec[0] == 'd':
@@ -121,22 +124,30 @@ def sendfile(s, key_folder_name, filename):
 
 
 # receive a report about a delete in the client's folder
-def recvdelete(s, key_folder_name):
+def recvdelete(s, key_folder_name, map_key_of_map_client_and_changes=None, computer_id=0):
     seperator = readline(s)
     path = readline(s)
+    all_path = key_folder_name
     for name in path.split(seperator):
-        key_folder_name = os.path.join(key_folder_name, name)
+        all_path = os.path.join(all_path, name)
+    if map_key_of_map_client_and_changes is not None:
+        for cid in map_key_of_map_client_and_changes[key_folder_name].keys():
+            if cid != computer_id:
+                if map_key_of_map_client_and_changes[key_folder_name][cid] is not None:
+                    map_key_of_map_client_and_changes[key_folder_name][cid].append((path, '', 'deleted'))
+                else:
+                    map_key_of_map_client_and_changes[key_folder_name][cid] = [(path, '', 'deleted')]
     print(f'Deleting')
-    if os.path.isdir(key_folder_name):
-        os.rmdir(key_folder_name)
+    if os.path.isdir(all_path):
+        os.rmdir(all_path)
     else:
-        os.remove(key_folder_name)
+        os.remove(all_path)
 
 
 # receive a report about a move in the client's folder
-def recvmove(s, keyfoldername):
-    recvcreate(s, keyfoldername)
-    recvdelete(s, keyfoldername)
+def recvmove(s, keyfoldername, map_key_of_map_client_and_changes=None, computer_id=0):
+    recvcreate(s, keyfoldername, True, os.sep, map_key_of_map_client_and_changes, computer_id)
+    recvdelete(s, keyfoldername, map_key_of_map_client_and_changes, computer_id)
 
 
 # send about a file deleted
@@ -176,12 +187,12 @@ def eventhappenend(option, s, directory, src, dst):
 
 
 # call the function according to the report we got
-def eventrecieved(option, s, foldername, mapkeyofmapclientandchanges=None, computer_id=0):
+def eventrecieved(option, s, foldername, map_key_of_map_client_and_changes=None, computer_id=0):
     if option == 'create':
-        return recvcreate(s, foldername, True, os.sep, mapkeyofmapclientandchanges, computer_id)
+        return recvcreate(s, foldername, True, os.sep, map_key_of_map_client_and_changes, computer_id)
     if option == 'delete':
-        return recvdelete(s, mapkeyofmapclientandchanges)
+        return recvdelete(s, foldername, map_key_of_map_client_and_changes, computer_id)
     if option == 'move':
-        return recvmove(s.mapkeyofmapclientandchanges)
+        return recvmove(s, foldername, map_key_of_map_client_and_changes, computer_id)
     if option == 'modify':
-        return recvcreate(s, foldername, mapkeyofmapclientandchanges)
+        return recvcreate(s, foldername, True, os.sep, map_key_of_map_client_and_changes, computer_id)
