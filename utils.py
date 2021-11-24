@@ -16,14 +16,17 @@ def sendfolders(s, key_folder_name):
 
 
 # receive all the changes in the back-up folder from the socket
-def recvchanges(sock, folder_name, map_key_of_map_client_and_changes=None, computer_id=0):
-    with sock:
-        while True:
+def recvchanges(sock, folder_name, size, map_key_of_map_client_and_changes=None, computer_id=0):
+    while size > 0:
+        try:
             rec = readline(sock)
             if not rec:
                 break
             change = rec.strip()
             eventrecieved(change, sock, folder_name, map_key_of_map_client_and_changes, computer_id)
+            size = size - 1
+        except:
+            break
 
 
 # receive all the back-up folder from the socket
@@ -123,13 +126,45 @@ def sendfile(s, key_folder_name, filename):
             data = f.read(chunk)
 
 
+# receive a file modified
+def receivefile(s, key_folder_name, map_key_of_map_client_and_changes=None, computer_id=0):
+    separator = readline(s)
+    filename = readline(s)[1:]
+    length = int(readline(s))
+    path = key_folder_name
+    for dirname in filename.split(separator):
+        path = os.path.join(path, dirname)
+    if map_key_of_map_client_and_changes is not None:
+        for cid in map_key_of_map_client_and_changes[key_folder_name].keys():
+            if cid != computer_id:
+                if map_key_of_map_client_and_changes[key_folder_name][cid] is not None:
+                    map_key_of_map_client_and_changes[key_folder_name][cid].append((path, '', 'modified'))
+                else:
+                    map_key_of_map_client_and_changes[key_folder_name][cid] = [(path, '', 'modified')]
+    print(f'Downloading {path}...\n  Expecting {length:,} bytes...', end='', flush=True)
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+    # Read the data in chunks so it can handle large files.
+    with open(path, 'wb') as f:
+        while length:
+            chunkdata = min(length, chunk)
+            data = s.recv(chunkdata)
+            if not data:
+                break
+            f.write(data)
+            length -= len(data)
+        else:  # only runs if while doesn't break and length==0
+            print('Complete')
+
 # receive a report about a delete in the client's folder
 def recvdelete(s, key_folder_name, map_key_of_map_client_and_changes=None, computer_id=0):
     seperator = readline(s)
     path = readline(s)
     all_path = key_folder_name
     for name in path.split(seperator):
-        all_path = os.path.join(all_path, name)
+        if name != '..' and name != '.':
+            all_path = os.path.join(all_path, name)
     if map_key_of_map_client_and_changes is not None:
         for cid in map_key_of_map_client_and_changes[key_folder_name].keys():
             if cid != computer_id:
@@ -158,15 +193,17 @@ def senddelete(s, src):
 
 # send about a new file created
 def sendcreate(s, key_folder_name, src):
-    s.send(os.sep.encode() + b'\n')
 
     if os.path.isdir(src):
+        s.send(os.sep.encode() + b'\n')
         relpathdir = os.path.relpath(src, key_folder_name)
+        print(f'Sending {relpathdir}')
         dirsize = 0
         s.send(b'd' + relpathdir.encode('utf-8') + b'\n')
         s.send(str(dirsize).encode('utf-8') + b'\n')
 
     else:
+        s.send(os.sep.encode() + b'\n')
         sendfile(s, key_folder_name, src)
 
 
@@ -183,7 +220,9 @@ def eventhappenend(option, s, directory, src, dst):
         sendcreate(s, directory, dst)
         return senddelete(s, os.path.relpath(src, directory))
     if option == 'modified':
-        return
+        s.send('modify'.encode('utf-8') + b'\n')
+        s.send(os.sep.encode() + b'\n')
+        return sendfile(s, directory, src)
 
 
 # call the function according to the report we got
@@ -195,4 +234,4 @@ def eventrecieved(option, s, foldername, map_key_of_map_client_and_changes=None,
     if option == 'move':
         return recvmove(s, foldername, map_key_of_map_client_and_changes, computer_id)
     if option == 'modify':
-        return recvcreate(s, foldername, True, os.sep, map_key_of_map_client_and_changes, computer_id)
+        return receivefile(s, foldername, map_key_of_map_client_and_changes, computer_id)
