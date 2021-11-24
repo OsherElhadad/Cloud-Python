@@ -60,9 +60,12 @@ if __name__ == "__main__":
 
 			# new computer of an existing client
 			if data[0] == 'n':
+				if data[1:] not in map_key_of_map_client_and_changes.keys():
+					server.close()
+					break
 				# rand a computer id
 				computer_id = get_computer_id(map_key_of_map_client_and_changes)
-				map_key_of_map_client_and_changes[key][computer_id] = None
+				map_key_of_map_client_and_changes[data[1:]][computer_id] = None
 				# send the computer its new id
 				try:
 					client_socket.send(computer_id.encode('utf-8'))
@@ -75,20 +78,20 @@ if __name__ == "__main__":
 				computer_id = client_socket.recv(7).decode('utf-8')
 				print(map_key_of_map_client_and_changes)
 				# send the changes in the back-up folder of the client account
-				if map_key_of_map_client_and_changes[key][computer_id] is not None:
+				if map_key_of_map_client_and_changes[data[1:]][computer_id] is not None:
 					client_socket.send('updates from another computer'.encode('utf8') + b'\n')
-					for event in map_key_of_map_client_and_changes[key][computer_id]:
+					client_socket.send(str(len(map_key_of_map_client_and_changes[data[1:]][computer_id])).encode('utf-8') + b'\n')
+					for event in map_key_of_map_client_and_changes[data[1:]][computer_id]:
 						eventhappenend(event[2], client_socket, data[1:], event[0], event[1])
-					map_key_of_map_client_and_changes[key][computer_id] = None
+					map_key_of_map_client_and_changes[data[1:]][computer_id] = None
 				else:
 					client_socket.send('receive changes from client'.encode('utf8') + b'\n')
 
 				# receive the changes in the back-up folder of the client
 				size = int(readline(client_socket))
-				if size > 0:
-					try:
-						recvchanges(client_socket, data[1:], map_key_of_map_client_and_changes, computer_id)
-					except:
-						print("receive changes failed")
+				try:
+					recvchanges(client_socket, data[1:], size, map_key_of_map_client_and_changes, computer_id)
+				except:
+					print("receive changes failed")
 
 		print('Client disconnected')
