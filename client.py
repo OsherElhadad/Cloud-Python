@@ -12,27 +12,33 @@ eventlist = list()
 
 # notify about creating a new file in the back-up folder
 def on_created(event):
-    eventlist.append((event.src_path, '', 'created'))
-    print(f"Someone created {event.src_path}!")
+    if ('.goutputstream' not in event.src_path) and ('.swp' not in event.src_path):
+        eventlist.append((event.src_path, '', 'created'))
+        print(f"Someone created {event.src_path}!")
 
 
 # notify about deleting a file in the back-up folder
 def on_deleted(event):
-    eventlist.append((event.src_path, '', 'deleted'))
-    print(f"Someone deleted {event.src_path}!")
+    if ('.goutputstream' not in event.src_path) and ('.swp' not in event.src_path):
+        eventlist.append((event.src_path, '', 'deleted'))
+        print(f"Someone deleted {event.src_path}!")
 
 
 # notify about modify a file in the back-up folder
 def on_modified(event):
-    if not os.path.isdir(event.src_path):
+    if (not os.path.isdir(event.src_path)) and ('.goutputstream' not in event.src_path) and ('.swp' not in event.src_path):
         eventlist.append((event.src_path, '', 'modified'))
         print(f"hey, {event.src_path} has been modified")
 
 
 # notify about move a file in the back-up folder
 def on_moved(event):
-    eventlist.append((event.src_path, event.dest_path, 'moved'))
-    print(f"someone moved {event.src_path} to {event.dest_path}")
+    if '.goutputstream' in event.src_path:
+        eventlist.append((event.dest_path, '', 'modified'))
+        print(f"hey, {event.dest_path} has been modified")
+    else:
+        eventlist.append((event.src_path, event.dest_path, 'moved'))
+        print(f"someone moved {event.src_path} to {event.dest_path}")
 
 
 # connect the computer in the first time to the server of an existing client
@@ -66,7 +72,7 @@ def first_connection_new_client(s):
 def get_socket(ip, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, int(port)))
-    s.settimeout(3000)
+    s.settimeout(500)
     return s
 
 
@@ -113,7 +119,8 @@ if __name__ == "__main__":
             # get new update from the server
             if option == 'updates from another computer':
                 my_observer.stop()
-                recvchanges(s, directory)
+                size = int(readline(s))
+                recvchanges(s, directory, size)
 
                 # define an observer for the changes in the back-up directory of the client
                 my_observer = Observer()
@@ -121,8 +128,8 @@ if __name__ == "__main__":
                 my_observer.start()
 
             # send new changes in the back-up folder of the client in this computer
-            s.send(str(len(eventlist)).encode('utf-8') + b'\n')
             print(eventlist)
+            s.send(str(len(eventlist)).encode('utf-8') + b'\n')
             for event in eventlist:
                 eventhappenend(event[2], s, directory, event[0], event[1])
             eventlist.clear()
