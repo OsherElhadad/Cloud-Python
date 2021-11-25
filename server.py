@@ -3,7 +3,7 @@ import sys
 import random
 import string
 import os
-from utils import sendfolders, recvfolders, recvchanges, eventhappenend, readline
+from utils import send_all, receive_folders, receive_changes, send_event, readline
 
 
 # get new id for a new computer
@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
 			# receive from the client the back-up folder
 			try:
-				recvfolders(client_socket, key)
+				receive_folders(client_socket, key)
 			except:
 				print("receive folders failed")
 		else:
@@ -69,7 +69,7 @@ if __name__ == "__main__":
 				# send the computer its new id
 				try:
 					client_socket.send(computer_id.encode('utf-8'))
-					sendfolders(client_socket, data[1:])
+					send_all(client_socket, data[1:])
 				except:
 					print("send folders failed")
 
@@ -82,7 +82,8 @@ if __name__ == "__main__":
 					client_socket.send('updates from another computer'.encode('utf8') + b'\n')
 					client_socket.send(str(len(map_key_of_map_client_and_changes[data[1:]][computer_id])).encode('utf-8') + b'\n')
 					for event in map_key_of_map_client_and_changes[data[1:]][computer_id]:
-						eventhappenend(event[2], client_socket, data[1:], event[0], event[1])
+						send_event(event[2], client_socket, data[1:], event[0], event[1])
+					map_key_of_map_client_and_changes[data[1:]][computer_id] = None
 					map_key_of_map_client_and_changes[data[1:]][computer_id] = None
 				else:
 					client_socket.send('receive changes from client'.encode('utf8') + b'\n')
@@ -90,7 +91,7 @@ if __name__ == "__main__":
 				# receive the changes in the back-up folder of the client
 				size = int(readline(client_socket))
 				try:
-					recvchanges(client_socket, data[1:], size, map_key_of_map_client_and_changes, computer_id)
+					receive_changes(client_socket, data[1:], size, map_key_of_map_client_and_changes, computer_id)
 				except:
 					print("receive changes failed")
 

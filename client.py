@@ -2,42 +2,42 @@ import socket
 import sys
 import time
 import os
-from utils import sendfolders, recvfolders, eventhappenend, readline, recvchanges
+from utils import send_all, receive_folders, send_event, readline, receive_changes
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
 chunk = 1000000
-eventlist = list()
+event_list = list()
 
 
 # notify about creating a new file in the back-up folder
 def on_created(event):
     if ('.goutputstream' not in event.src_path) and ('.swp' not in event.src_path):
-        eventlist.append((event.src_path, '', 'created'))
+        event_list.append((event.src_path, '', 'created'))
         print(f"Someone created {event.src_path}!")
 
 
 # notify about deleting a file in the back-up folder
 def on_deleted(event):
     if ('.goutputstream' not in event.src_path) and ('.swp' not in event.src_path):
-        eventlist.append((event.src_path, '', 'deleted'))
+        event_list.append((event.src_path, '', 'deleted'))
         print(f"Someone deleted {event.src_path}!")
 
 
 # notify about modify a file in the back-up folder
 def on_modified(event):
     if (not os.path.isdir(event.src_path)) and ('.goutputstream' not in event.src_path) and ('.swp' not in event.src_path):
-        eventlist.append((event.src_path, '', 'modified'))
+        event_list.append((event.src_path, '', 'modified'))
         print(f"hey, {event.src_path} has been modified")
 
 
 # notify about move a file in the back-up folder
 def on_moved(event):
     if '.goutputstream' in event.src_path:
-        eventlist.append((event.dest_path, '', 'modified'))
+        event_list.append((event.dest_path, '', 'modified'))
         print(f"hey, {event.dest_path} has been modified")
     else:
-        eventlist.append((event.src_path, event.dest_path, 'moved'))
+        event_list.append((event.src_path, event.dest_path, 'moved'))
         print(f"someone moved {event.src_path} to {event.dest_path}")
 
 
@@ -47,7 +47,7 @@ def first_connection_new_computer(s, arguments):
     s.send(b'n' + key.encode('utf-8'))
     try:
         computer_id = s.recv(7).decode('utf-8')
-        recvfolders(s, directory)
+        receive_folders(s, directory)
     except:
         computer_id = ''
         print("receive folders failed")
@@ -62,7 +62,7 @@ def first_connection_new_client(s):
     with open("key_file", 'wb') as f:
         f.write(key.encode('utf-8'))
     try:
-        sendfolders(s, directory)
+        send_all(s, directory)
     except:
         print("send folders failed")
     return key, computer_id
@@ -77,7 +77,6 @@ def get_socket(ip, port):
 
 
 if __name__ == "__main__":
-
     # get the arguments of the client
     ip = sys.argv[1]
     port = sys.argv[2]
@@ -120,7 +119,7 @@ if __name__ == "__main__":
             if option == 'updates from another computer':
                 my_observer.stop()
                 size = int(readline(s))
-                recvchanges(s, directory, size)
+                receive_changes(s, directory, size)
 
                 # define an observer for the changes in the back-up directory of the client
                 my_observer = Observer()
@@ -128,11 +127,11 @@ if __name__ == "__main__":
                 my_observer.start()
 
             # send new changes in the back-up folder of the client in this computer
-            print(eventlist)
-            s.send(str(len(eventlist)).encode('utf-8') + b'\n')
-            for event in eventlist:
-                eventhappenend(event[2], s, directory, event[0], event[1])
-            eventlist.clear()
+            print(event_list)
+            s.send(str(len(event_list)).encode('utf-8') + b'\n')
+            for event in event_list:
+                send_event(event[2], s, directory, event[0], event[1])
+            event_list.clear()
 
     except KeyboardInterrupt:
         my_observer.stop()
