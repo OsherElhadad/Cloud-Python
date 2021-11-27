@@ -126,16 +126,15 @@ def write_file(s, path, length):
 # receive a report about a delete in the client's folder
 def receive_delete(s, key_folder_name, separator, map_key_of_map_client_and_changes=None, computer_id=0):
     path = readline(s)
-    all_path = key_folder_name
     for name in path.split(separator):
         if name != '..' and name != '.':
-            all_path = os.path.join(all_path, name)
+            key_folder_name = os.path.join(key_folder_name, name)
 
     # delete the directory or the file
-    if os.path.isdir(all_path):
-        os.rmdir(all_path)
+    if os.path.isdir(key_folder_name):
+        os.rmdir(key_folder_name)
     else:
-        os.remove(all_path)
+        os.remove(key_folder_name)
 
     send_client_computers(map_key_of_map_client_and_changes, key_folder_name, computer_id, path, '', 'deleted')
 
