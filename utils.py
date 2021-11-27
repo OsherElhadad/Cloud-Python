@@ -16,17 +16,10 @@ def send_all(s, key_folder_name):
 
 
 # receive all the changes in the back-up folder from the socket
-def receive_changes(sock, folder_name, size, map_key_of_map_client_and_changes=None, computer_id=0):
+def receive_changes(s, folder_name, size, map_key_of_map_client_and_changes=None, computer_id=0):
     while size > 0:
-        try:
-            rec = readline(sock)
-            if not rec:
-                break
-            change = rec.strip()
-            receive_event(change, sock, folder_name, map_key_of_map_client_and_changes, computer_id)
-            size = size - 1
-        except:
-            break
+    	receive_event(readline(s).strip(), s, folder_name, map_key_of_map_client_and_changes, computer_id)
+    	size = size - 1
 
 
 # receive all the back-up folder from the socket
