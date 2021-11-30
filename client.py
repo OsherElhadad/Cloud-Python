@@ -129,14 +129,20 @@ if __name__ == "__main__":
 
             # get new update from the server
             if option == 'updates from another computer':
-                my_observer.stop()
+                #my_observer.stop()
+                
+                
                 size = int(readline(s))
-                receive_changes(s, directory, size)
+                event_list_before_recieve = list()
+                receive_changes(s, directory, size, None, 0, event_list_before_recieve)
+                for event_before in event_list_before_recieve:
+                    if event_before in event_list:
+                        event_list.remove(event)
 
                 # define an observer for the changes in the back-up directory of the client
-                my_observer = Observer()
-                my_observer.schedule(my_event, directory, recursive=True)
-                my_observer.start()
+                #my_observer = Observer()
+                #my_observer.schedule(my_event, directory, recursive=True)
+                #my_observer.start()
 
             # send new changes in the back-up folder of the client in this computer
             print(event_list)
