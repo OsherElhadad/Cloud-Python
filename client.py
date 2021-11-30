@@ -32,7 +32,8 @@ def on_deleted(event):
 
 # notify about modify a file in the back-up folder
 def on_modified(event):
-    if (not os.path.isdir(event.src_path)) and ('.goutputstream' not in event.src_path) and ('.swp' not in event.src_path):
+    if (not os.path.isdir(event.src_path)) and ('.goutputstream' not in event.src_path) and (
+            '.swp' not in event.src_path):
         event_list.append((event.src_path, '', 'modified'))
         print(f"hey, {event.src_path} has been modified")
 
@@ -43,11 +44,17 @@ def on_moved(event):
         event_list.append((event.dest_path, '', 'modified'))
         print(f"hey, {event.dest_path} has been modified")
     else:
-        for e in reversed(event_list):
-            if e[2] == 'modified' and e[0] == event.src_path:
-                e[0] = event.dest_path
-            if e[2] == 'created' and e[0] == event.src_path:
-                e[0] = event.dest_path
+        length = len(event_list)
+        for i in range(length):
+            if event_list[length - i - 1][2] == 'modified' and event_list[length - i - 1][0] == event.src_path:
+                l = list(event_list[length - i - 1])
+                l[0] = event.dest_path
+                event_list[length - i - 1] = tuple(l)
+
+            if event_list[length - i - 1][2] == 'created' and event_list[length - i - 1][0] == event.src_path:
+                l = list(event_list[length - i - 1])
+                l[0] = event.dest_path
+                event_list[length - i - 1] = tuple(l)
                 return
         event_list.append((event.src_path, event.dest_path, 'moved'))
         print(f"someone moved {event.src_path} to {event.dest_path}")
@@ -129,9 +136,8 @@ if __name__ == "__main__":
 
             # get new update from the server
             if option == 'updates from another computer':
-                #my_observer.stop()
-                
-                
+                my_observer.stop()
+
                 size = int(readline(s))
                 event_list_before_recieve = list()
                 receive_changes(s, directory, size, None, 0, event_list_before_recieve)
@@ -140,9 +146,9 @@ if __name__ == "__main__":
                         event_list.remove(event)
 
                 # define an observer for the changes in the back-up directory of the client
-                #my_observer = Observer()
-                #my_observer.schedule(my_event, directory, recursive=True)
-                #my_observer.start()
+                my_observer = Observer()
+                my_observer.schedule(my_event, directory, recursive=True)
+                my_observer.start()
 
             # send new changes in the back-up folder of the client in this computer
             print(event_list)
