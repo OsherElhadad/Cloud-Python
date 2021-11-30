@@ -20,8 +20,14 @@ def on_created(event):
 # notify about deleting a file in the back-up folder
 def on_deleted(event):
     if ('.goutputstream' not in event.src_path) and ('.swp' not in event.src_path):
-        event_list.append((event.src_path, '', 'deleted'))
         print(f"Someone deleted {event.src_path}!")
+        for e in reversed(event_list):
+            if e[2] == 'modified' and e[0] == event.src_path:
+                event_list.remove(e)
+            if e[2] == 'created' and e[0] == event.src_path:
+                event_list.remove(e)
+                return
+        event_list.append((event.src_path, '', 'deleted'))
 
 
 # notify about modify a file in the back-up folder
@@ -37,6 +43,12 @@ def on_moved(event):
         event_list.append((event.dest_path, '', 'modified'))
         print(f"hey, {event.dest_path} has been modified")
     else:
+        for e in reversed(event_list):
+            if e[2] == 'modified' and e[0] == event.src_path:
+                e[0] = event.dest_path
+            if e[2] == 'created' and e[0] == event.src_path:
+                e[0] = event.dest_path
+                return
         event_list.append((event.src_path, event.dest_path, 'moved'))
         print(f"someone moved {event.src_path} to {event.dest_path}")
 
