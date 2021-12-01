@@ -8,19 +8,26 @@ from watchdog.events import PatternMatchingEventHandler
 
 chunk = 1000000
 event_list = list()
+last_event = None
 
 
 # notify about creating a new file in the back-up folder
 def on_created(event):
+    global last_event, event_list
     if ('.goutputstream' not in event.src_path) and ('.swp' not in event.src_path):
+        if (last_event is not None) and (last_event[0] == event.src_path) and (last_event[2] == 'created'):
+            return
         event_list.append((event.src_path, '', 'created'))
+        last_event = (event.src_path, '', 'created')
         print(f"Someone created {event.src_path}!")
 
 
 # notify about deleting a file in the back-up folder
 def on_deleted(event):
+    global last_event, event_list
     if ('.goutputstream' not in event.src_path) and ('.swp' not in event.src_path):
-        print(f"Someone deleted {event.src_path}!")
+        if (last_event is not None) and (last_event[0] == event.src_path) and (last_event[2] == 'deleted'):
+            return
         for e in reversed(event_list):
             if e[2] == 'modified' and e[0] == event.src_path:
                 event_list.remove(e)
@@ -28,22 +35,38 @@ def on_deleted(event):
                 event_list.remove(e)
                 return
         event_list.append((event.src_path, '', 'deleted'))
+        last_event = (event.src_path, '', 'deleted')
+        print(f"Someone deleted {event.src_path}!")
 
 
 # notify about modify a file in the back-up folder
 def on_modified(event):
+    global last_event, event_list
     if (not os.path.isdir(event.src_path)) and ('.goutputstream' not in event.src_path) and (
             '.swp' not in event.src_path):
+        if (last_event is not None) and (last_event[0] == event.src_path) and (last_event[2] == 'modified'):
+            return
         event_list.append((event.src_path, '', 'modified'))
+        last_event = (event.src_path, '', 'modified')
         print(f"hey, {event.src_path} has been modified")
 
 
 # notify about move a file in the back-up folder
 def on_moved(event):
+    global last_event, event_list
     if '.goutputstream' in event.src_path:
+        if (last_event is not None) and (last_event[0] == event.dest_path) and (last_event[2] == 'modified'):
+            return
         event_list.append((event.dest_path, '', 'modified'))
+        last_event = (event.dest_path, '', 'modified')
         print(f"hey, {event.dest_path} has been modified")
     else:
+        if (last_event is not None) and (last_event[0] in event.src_path) and (last_event[2] == 'moved'):
+            print(f"not added moved {event.src_path} to {event.dest_path}")
+            return
+        if (last_event is not None) and (last_event[0] == event.src_path) and (last_event[1] == event.dest_path) and\
+                (last_event[2] == 'moved'):
+            return
         length = len(event_list)
         for i in range(length):
             if event_list[length - i - 1][2] == 'modified' and event_list[length - i - 1][0] == event.src_path:
@@ -57,6 +80,7 @@ def on_moved(event):
                 event_list[length - i - 1] = tuple(l)
                 return
         event_list.append((event.src_path, event.dest_path, 'moved'))
+        last_event = (event.src_path, event.dest_path, 'moved')
         print(f"someone moved {event.src_path} to {event.dest_path}")
 
 
@@ -91,11 +115,12 @@ def first_connection_new_client(s):
 def get_socket(ip, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, int(port)))
-    s.settimeout(500)
+    s.settimeout(5)
     return s
 
 
 if __name__ == "__main__":
+
     # get the arguments of the client
     ip = sys.argv[1]
     port = sys.argv[2]
@@ -121,6 +146,7 @@ if __name__ == "__main__":
     my_observer = Observer()
     my_observer.schedule(my_event, directory, recursive=True)
     my_observer.start()
+    event_list_before_receive = list()
     try:
         while True:
 
@@ -136,19 +162,27 @@ if __name__ == "__main__":
 
             # get new update from the server
             if option == 'updates from another computer':
-                my_observer.stop()
+                #my_observer.stop()
 
                 size = int(readline(s))
-                event_list_before_recieve = list()
-                receive_changes(s, directory, size, None, 0, event_list_before_recieve)
-                for event_before in event_list_before_recieve:
-                    if event_before in event_list:
-                        event_list.remove(event)
+                event_list_before_receive = list()
+                try:
+                    receive_changes(s, directory, size, None, 0, event_list_before_receive)
+                except:
+                    print("receive changes failed")
+                print(event_list)
 
                 # define an observer for the changes in the back-up directory of the client
-                my_observer = Observer()
-                my_observer.schedule(my_event, directory, recursive=True)
-                my_observer.start()
+                #my_observer = Observer()
+                #my_observer.schedule(my_event, directory, recursive=True)
+                #my_observer.start()
+
+            print(event_list)
+            for event_before in event_list_before_receive.copy():
+                for event in event_list.copy():
+                    if event_before[0] == event[0] and event_before[1] == event[1] and event_before[2] == event[2]:
+                        event_list.remove(event)
+                        event_list_before_receive.remove(event_before)
 
             # send new changes in the back-up folder of the client in this computer
             print(event_list)
