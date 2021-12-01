@@ -76,7 +76,6 @@ if __name__ == "__main__":
 			# existing computer
 			else:
 				computer_id = client_socket.recv(7).decode('utf-8')
-				print(map_key_of_map_client_and_changes)
 				# send the changes in the back-up folder of the client account
 				if map_key_of_map_client_and_changes[data[1:]][computer_id] is not None:
 					client_socket.send('updates from another computer'.encode('utf8') + b'\n')
@@ -84,10 +83,10 @@ if __name__ == "__main__":
 					for event in map_key_of_map_client_and_changes[data[1:]][computer_id]:
 						send_event(event[2], client_socket, data[1:], event[0], event[1])
 					map_key_of_map_client_and_changes[data[1:]][computer_id] = None
-					map_key_of_map_client_and_changes[data[1:]][computer_id] = None
 				else:
 					client_socket.send('receive changes from client'.encode('utf8') + b'\n')
 
+				print(map_key_of_map_client_and_changes)
 				# receive the changes in the back-up folder of the client
 				size = int(readline(client_socket))
 				try:
