@@ -16,19 +16,20 @@ def send_all(s, key_folder_name):
 
 
 # receive all the changes in the back-up folder from the socket
-def receive_changes(s, folder_name, size, map_key_of_map_client_and_changes=None, computer_id=0, event_list_before_recieve=None):
+def receive_changes(s, folder_name, size, map_key_of_map_client_and_changes=None, computer_id=0,
+                    event_list_before_receive=None):
     while size > 0:
-    	receive_event(readline(s).strip(), s, folder_name, map_key_of_map_client_and_changes, computer_id, event_list_before_recieve)
-    	size = size - 1
+        receive_event(readline(s).strip(), s, folder_name, map_key_of_map_client_and_changes, computer_id,
+                      event_list_before_receive)
+        size = size - 1
 
 
 # receive all the back-up folder from the socket
 def receive_folders(s, folder_name):
     separator = readline(s)
-    with s:
-        while True:
-            if receive_create(s, folder_name, separator) == -1:
-                break
+    while True:
+        if receive_create(s, folder_name, separator) == -1:
+            break
 
 
 # read a line from the socket
@@ -42,8 +43,11 @@ def readline(s):
 
 
 # receive a report about a new file in the client's folder
-def receive_create(s, key_folder_name, separator, map_key_of_map_client_and_changes=None, computer_id=0, event_list_before_recieve=None):
+def receive_create(s, key_folder_name, separator, map_key_of_map_client_and_changes=None, computer_id=0,
+                   event_list_before_receive=None):
     rec = readline(s)
+    if not rec:
+        return -1
     filename = rec[1:].strip()
     length = int(readline(s))
     path = key_folder_name
@@ -51,8 +55,8 @@ def receive_create(s, key_folder_name, separator, map_key_of_map_client_and_chan
         path = os.path.join(path, dirname)
 
     send_client_computers(map_key_of_map_client_and_changes, key_folder_name, computer_id, path, '', 'created')
-    add_to_event_list_before_recieve(event_list_before_recieve, path, '', 'created')
-
+    add_to_event_list_before_receive(event_list_before_receive, path, '', 'created')
+    print(f'receive {path}')
     if rec[0] == 'd':
         os.makedirs(path, exist_ok=True)
         print('Complete')
@@ -98,11 +102,12 @@ def send_client_computers(map_key_of_map_client_and_changes, key_folder_name, co
                 else:
                     map_key_of_map_client_and_changes[key_folder_name][cid] = [(src, dst, report)]
     print(report)
-    
+
+
 # add the events from the server to the event list before changes
-def add_to_event_list_before_recieve(event_list_before_recieve, src, dst, report):
-    if event_list_before_recieve is not None:
-        event_list_before_recieve.append((src, dst, report))
+def add_to_event_list_before_receive(event_list_before_receive, src, dst, report):
+    if event_list_before_receive is not None:
+        event_list_before_receive.append((src, dst, report))
     print(report)
 
 
@@ -124,24 +129,26 @@ def write_file(s, path, length):
 
 
 # receive a report about a delete in the client's folder
-def receive_delete(s, key_folder_name, separator, map_key_of_map_client_and_changes=None, computer_id=0, event_list_before_recieve=None):
+def receive_delete(s, key_folder_name, separator, map_key_of_map_client_and_changes=None, computer_id=0,
+                   event_list_before_receive=None):
     path = readline(s)
+    full_path = key_folder_name
     for name in path.split(separator):
         if name != '..' and name != '.':
-            key_folder_name = os.path.join(key_folder_name, name)
-
+            full_path = os.path.join(full_path, name)
+    print(f'delete {path} + {key_folder_name} + {full_path}')
     # delete the directory or the file
-    if os.path.isdir(key_folder_name):
-        os.rmdir(key_folder_name)
+    if os.path.isdir(full_path):
+        os.rmdir(full_path)
     else:
-        os.remove(key_folder_name)
-
-    send_client_computers(map_key_of_map_client_and_changes, key_folder_name, computer_id, path, '', 'deleted')
-    add_to_event_list_before_recieve(event_list_before_recieve, path, '', 'deleted')
+        os.remove(full_path)
+    send_client_computers(map_key_of_map_client_and_changes, key_folder_name, computer_id, full_path, '', 'deleted')
+    add_to_event_list_before_receive(event_list_before_receive, full_path, '', 'deleted')
 
 
 # receive a report about a move in the client's folder
-def receive_move(s, key_folder_name, separator, map_key_of_map_client_and_changes, computer_id, event_list_before_recieve=None):
+def receive_move(s, key_folder_name, separator, map_key_of_map_client_and_changes, computer_id,
+                 event_list_before_receive=None):
     # define the path of the source
     src = readline(s)
     for d in src.split(separator)[1:]:
@@ -157,7 +164,7 @@ def receive_move(s, key_folder_name, separator, map_key_of_map_client_and_change
     key_folder_name = key_folder_name.split(separator)[0]
 
     send_client_computers(map_key_of_map_client_and_changes, key_folder_name, computer_id, src, dst, 'moved')
-    add_to_event_list_before_recieve(event_list_before_recieve, src, dst, 'moved')
+    add_to_event_list_before_receive(event_list_before_receive, src, dst, 'moved')
 
     os.rename(src, dst)
 
@@ -202,13 +209,18 @@ def send_event(option, s, directory, src, dst):
 
 
 # call the function according to the report we got
-def receive_event(option, s, folder_name, map_key_of_map_client_and_changes=None, computer_id=0, event_list_before_recieve=None):
+def receive_event(option, s, folder_name, map_key_of_map_client_and_changes=None, computer_id=0,
+                  event_list_before_receive=None):
     separator = readline(s)
     if option == 'create':
-        return receive_create(s, folder_name, separator, map_key_of_map_client_and_changes, computer_id, event_list_before_recieve)
+        return receive_create(s, folder_name, separator, map_key_of_map_client_and_changes, computer_id,
+                              event_list_before_receive)
     if option == 'delete':
-        return receive_delete(s, folder_name, separator, map_key_of_map_client_and_changes, computer_id, event_list_before_recieve)
+        return receive_delete(s, folder_name, separator, map_key_of_map_client_and_changes, computer_id,
+                              event_list_before_receive)
     if option == 'move':
-        return receive_move(s, folder_name, separator, map_key_of_map_client_and_changes, computer_id, event_list_before_recieve)
+        return receive_move(s, folder_name, separator, map_key_of_map_client_and_changes, computer_id,
+                            event_list_before_receive)
     if option == 'modify':
-        return receive_create(s, folder_name, separator, map_key_of_map_client_and_changes, computer_id, event_list_before_recieve)
+        return receive_create(s, folder_name, separator, map_key_of_map_client_and_changes, computer_id,
+                              event_list_before_receive)
