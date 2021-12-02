@@ -57,7 +57,7 @@ def on_moved(event):
         last_event = (event.dest_path, '', 'modified')
         print(f"hey, {event.dest_path} has been modified")
     else:
-        if (last_event is not None) and (last_event[0] in event.src_path) and (last_event[2] == 'moved'):
+        if (last_event is not None) and ((last_event[0] + os.path.sep) in event.src_path) and (last_event[2] == 'moved'):
             print(f"not added moved {event.src_path} to {event.dest_path}")
             return
         if (last_event is not None) and (last_event[0] == event.src_path) and (last_event[1] == event.dest_path) and\
