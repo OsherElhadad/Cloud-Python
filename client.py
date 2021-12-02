@@ -19,7 +19,6 @@ def on_created(event):
             return
         event_list.append((event.src_path, '', 'created'))
         last_event = (event.src_path, '', 'created')
-        print(f"Someone created {event.src_path}!")
 
 
 # notify about deleting a file in the back-up folder
@@ -36,7 +35,6 @@ def on_deleted(event):
                 return
         event_list.append((event.src_path, '', 'deleted'))
         last_event = (event.src_path, '', 'deleted')
-        print(f"Someone deleted {event.src_path}!")
 
 
 # notify about modify a file in the back-up folder
@@ -46,7 +44,6 @@ def on_modified(event):
             '.swp' not in event.src_path):
         event_list.append((event.src_path, '', 'modified'))
         last_event = (event.src_path, '', 'modified')
-        print(f"hey, {event.src_path} has been modified")
 
 
 # notify about move a file in the back-up folder
@@ -55,10 +52,8 @@ def on_moved(event):
     if '.goutputstream' in event.src_path:
         event_list.append((event.dest_path, '', 'modified'))
         last_event = (event.dest_path, '', 'modified')
-        print(f"hey, {event.dest_path} has been modified")
     else:
         if (last_event is not None) and (last_event[0] in event.src_path) and (last_event[2] == 'moved'):
-            print(f"not added moved {event.src_path} to {event.dest_path}")
             return
         if (last_event is not None) and (last_event[0] == event.src_path) and (last_event[1] == event.dest_path) and\
                 (last_event[2] == 'moved'):
@@ -77,7 +72,6 @@ def on_moved(event):
                 return
         event_list.append((event.src_path, event.dest_path, 'moved'))
         last_event = (event.src_path, event.dest_path, 'moved')
-        print(f"someone moved {event.src_path} to {event.dest_path}")
 
 
 # connect the computer in the first time to the server of an existing client
@@ -89,7 +83,6 @@ def first_connection_new_computer(s, arguments):
         receive_folders(s, directory)
     except:
         computer_id = ''
-        print("receive folders failed")
     return key, computer_id
 
 
@@ -103,7 +96,7 @@ def first_connection_new_client(s):
     try:
         send_all(s, directory)
     except:
-        print("send folders failed")
+        pass
     return key, computer_id
 
 
@@ -158,34 +151,24 @@ if __name__ == "__main__":
 
             # get new update from the server
             if option == 'updates from another computer':
-                #my_observer.stop()
 
                 size = int(readline(s))
                 event_list_before_receive = list()
                 try:
                     receive_changes(s, directory, size, None, 0, event_list_before_receive)
                 except:
-                    print("receive changes failed")
-                print(event_list)
+                    pass
 
-                # define an observer for the changes in the back-up directory of the client
-                #my_observer = Observer()
-                #my_observer.schedule(my_event, directory, recursive=True)
-                #my_observer.start()
-            print("event_list")
-            print(event_list)
-            print("event_list_before_receive")
-            print(event_list_before_receive)
+            # remove all the events that happened while the client gets the new changes
             event_list_before_receive_copy = event_list_before_receive.copy()
             event_list_copy = event_list.copy()
             for event_before in event_list_before_receive_copy:
-                for event in event_list_copy:
-                    if event_before in event_list_before_receive and event in event_list and event_before[0] == event[0]:
+                for e in event_list_copy:
+                    if event_before in event_list_before_receive and e in event_list and event_before[0] == e[0]:
                         event_list = [value for value in event_list if value[0] != event_before[0]]
                         event_list_before_receive.remove(event_before)
 
             # send new changes in the back-up folder of the client in this computer
-            print(event_list)
             s.send(str(len(event_list)).encode() + b'\n')
             for event in event_list:
                 send_event(event[2], s, directory, event[0], event[1])
