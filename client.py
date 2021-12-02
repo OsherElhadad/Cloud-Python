@@ -53,7 +53,7 @@ def on_moved(event):
         event_list.append((event.dest_path, '', 'modified'))
         last_event = (event.dest_path, '', 'modified')
     else:
-        if (last_event is not None) and (last_event[0] in event.src_path) and (last_event[2] == 'moved'):
+        if (last_event is not None) and ((last_event[0] + os.path.sep) in event.src_path) and (last_event[2] == 'moved'):
             return
         if (last_event is not None) and (last_event[0] == event.src_path) and (last_event[1] == event.dest_path) and\
                 (last_event[2] == 'moved'):
