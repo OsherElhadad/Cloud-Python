@@ -34,9 +34,9 @@ def receive_folders(s, folder_name):
 
 # read a line from the socket
 def readline(s):
-    rec = s.recv(1).decode('utf-8')
+    rec = s.recv(1).decode()
     while '\n' not in rec and rec:
-        rec += s.recv(1).decode('utf-8')
+        rec += s.recv(1).decode()
     if rec:
         return rec[:-1]
     return ''
@@ -71,8 +71,8 @@ def send_folder(s, path, key_folder_name):
     rel_path_dir = os.path.relpath(path, key_folder_name)
     dir_size = 0
     print(f'Sending {rel_path_dir}')
-    s.send(b'd' + rel_path_dir.encode('utf-8') + b'\n')
-    s.send(str(dir_size).encode('utf-8') + b'\n')
+    s.send(b'd' + rel_path_dir.encode() + b'\n')
+    s.send(str(dir_size).encode() + b'\n')
 
 
 # send a file
@@ -82,8 +82,8 @@ def sendfile(s, key_folder_name, filename):
     print(f'Sending {rel_path}')
 
     with open(filename, 'rb') as f:
-        s.send(b'f' + rel_path.encode('utf-8') + b'\n')
-        s.send(str(filesize).encode('utf-8') + b'\n')
+        s.send(b'f' + rel_path.encode() + b'\n')
+        s.send(str(filesize).encode() + b'\n')
 
         # Send the file in chunks so large files can be handled.
         data = f.read(chunk)
@@ -127,6 +127,19 @@ def write_file(s, path, length):
             return 1
     return -1
 
+# remove directory recursivly
+def removedirectory(directory):
+    print(directory)
+    for path, dirs, files in os.walk(directory):
+        for file1 in files:
+            print(os.path.join(path, file1))
+            os.remove(os.path.join(path, file1))
+        for d in dirs:
+            print(os.path.join(path, file1))
+            removedirectory(os.path.join(path, d))
+    print(directory)
+    os.rmdir(directory)
+    
 
 # receive a report about a delete in the client's folder
 def receive_delete(s, key_folder_name, separator, map_key_of_map_client_and_changes=None, computer_id=0,
@@ -139,8 +152,10 @@ def receive_delete(s, key_folder_name, separator, map_key_of_map_client_and_chan
     print(f'delete {path} + {key_folder_name} + {full_path}')
     # delete the directory or the file
     if os.path.isdir(full_path):
-        os.rmdir(full_path)
+        print("dir")
+        removedirectory(full_path)
     else:
+        print("file")
         os.remove(full_path)
     send_client_computers(map_key_of_map_client_and_changes, key_folder_name, computer_id, full_path, '', 'deleted')
     add_to_event_list_before_receive(event_list_before_receive, full_path, '', 'deleted')
@@ -171,22 +186,22 @@ def receive_move(s, key_folder_name, separator, map_key_of_map_client_and_change
 
 # send about a file deleted
 def send_delete(s, src):
-    s.send('delete'.encode('utf-8') + b'\n')
+    s.send('delete'.encode() + b'\n')
     s.send(os.sep.encode() + b'\n')
-    s.send(src.encode('utf-8') + b'\n')
+    s.send(src.encode() + b'\n')
 
 
 # send about a file moved
 def send_move(s, src, dst):
-    s.send('move'.encode('utf-8') + b'\n')
+    s.send('move'.encode() + b'\n')
     s.send(os.sep.encode() + b'\n')
-    s.send(src.encode('utf-8') + b'\n')
-    s.send(dst.encode('utf-8') + b'\n')
+    s.send(src.encode() + b'\n')
+    s.send(dst.encode() + b'\n')
 
 
 # send about a new file created
 def send_create(s, key_folder_name, src):
-    s.send('create'.encode('utf-8') + b'\n')
+    s.send('create'.encode() + b'\n')
     s.send(os.sep.encode() + b'\n')
     if os.path.isdir(src):
         send_folder(s, src, key_folder_name)
@@ -203,7 +218,7 @@ def send_event(option, s, directory, src, dst):
     if option == 'moved':
         return send_move(s, src, dst)
     if option == 'modified':
-        s.send('modify'.encode('utf-8') + b'\n')
+        s.send('modify'.encode() + b'\n')
         s.send(os.sep.encode() + b'\n')
         return sendfile(s, directory, src)
 
