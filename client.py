@@ -44,8 +44,6 @@ def on_modified(event):
     global last_event, event_list
     if (not os.path.isdir(event.src_path)) and ('.goutputstream' not in event.src_path) and (
             '.swp' not in event.src_path):
-        if (last_event is not None) and (last_event[0] == event.src_path) and (last_event[2] == 'modified'):
-            return
         event_list.append((event.src_path, '', 'modified'))
         last_event = (event.src_path, '', 'modified')
         print(f"hey, {event.src_path} has been modified")
@@ -55,8 +53,6 @@ def on_modified(event):
 def on_moved(event):
     global last_event, event_list
     if '.goutputstream' in event.src_path:
-        if (last_event is not None) and (last_event[0] == event.dest_path) and (last_event[2] == 'modified'):
-            return
         event_list.append((event.dest_path, '', 'modified'))
         last_event = (event.dest_path, '', 'modified')
         print(f"hey, {event.dest_path} has been modified")
@@ -87,9 +83,9 @@ def on_moved(event):
 # connect the computer in the first time to the server of an existing client
 def first_connection_new_computer(s, arguments):
     key = arguments[5]
-    s.send(b'n' + key.encode('utf-8'))
+    s.send(b'n' + key.encode())
     try:
-        computer_id = s.recv(7).decode('utf-8')
+        computer_id = s.recv(7).decode()
         receive_folders(s, directory)
     except:
         computer_id = ''
@@ -99,11 +95,11 @@ def first_connection_new_computer(s, arguments):
 
 # connect the client in the first time to the server
 def first_connection_new_client(s):
-    s.send('Hi'.encode('utf-8'))
-    computer_id = s.recv(7).decode('utf-8')
-    key = s.recv(128).decode('utf-8')
+    s.send('Hi'.encode())
+    computer_id = s.recv(7).decode()
+    key = s.recv(128).decode()
     with open("key_file", 'wb') as f:
-        f.write(key.encode('utf-8'))
+        f.write(key.encode())
     try:
         send_all(s, directory)
     except:
@@ -156,8 +152,8 @@ if __name__ == "__main__":
             s = get_socket(ip, port)
 
             # connect the client again
-            s.send(b'o' + key.encode('utf-8'))
-            s.send(computer_id.encode('utf-8'))
+            s.send(b'o' + key.encode())
+            s.send(computer_id.encode())
             option = readline(s)
 
             # get new update from the server
@@ -176,17 +172,21 @@ if __name__ == "__main__":
                 #my_observer = Observer()
                 #my_observer.schedule(my_event, directory, recursive=True)
                 #my_observer.start()
-
+            print("event_list")
             print(event_list)
-            for event_before in event_list_before_receive.copy():
-                for event in event_list.copy():
-                    if event_before[0] == event[0] and event_before[1] == event[1] and event_before[2] == event[2]:
-                        event_list.remove(event)
+            print("event_list_before_receive")
+            print(event_list_before_receive)
+            event_list_before_receive_copy = event_list_before_receive.copy()
+            event_list_copy = event_list.copy()
+            for event_before in event_list_before_receive_copy:
+                for event in event_list_copy:
+                    if event_before in event_list_before_receive and event in event_list and event_before[0] == event[0]:
+                        event_list = [value for value in event_list if value[0] != event_before[0]]
                         event_list_before_receive.remove(event_before)
 
             # send new changes in the back-up folder of the client in this computer
             print(event_list)
-            s.send(str(len(event_list)).encode('utf-8') + b'\n')
+            s.send(str(len(event_list)).encode() + b'\n')
             for event in event_list:
                 send_event(event[2], s, directory, event[0], event[1])
             event_list.clear()
