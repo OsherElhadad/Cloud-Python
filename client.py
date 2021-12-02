@@ -91,8 +91,6 @@ def first_connection_new_client(s):
     s.send('Hi'.encode())
     computer_id = s.recv(7).decode()
     key = s.recv(128).decode()
-    with open("key_file", 'wb') as f:
-        f.write(key.encode())
     try:
         send_all(s, directory)
     except:
