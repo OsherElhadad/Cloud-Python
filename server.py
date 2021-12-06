@@ -40,58 +40,61 @@ if __name__ == "__main__":
 	while True:
 		client_socket, client_address = server.accept()
 		print('Connection from: ', client_address)
-		data = client_socket.recv(129).decode()
+		try:
+			data = client_socket.recv(129).decode()
 
-		# new client
-		if data == 'Hi':
-			# rand a computer id and client id and send it to the client
-			computer_id = get_computer_id(map_key_of_map_client_and_changes)
-			key = get_client_id()
-			map_key_of_map_client_and_changes[key] = {computer_id: None}
-			client_socket.send(computer_id.encode())
-			client_socket.send(key.encode())
-
-			# receive from the client the back-up folder
-			try:
-				receive_folders(client_socket, key)
-			except:
-				print("receive folders failed")
-		else:
-
-			# new computer of an existing client
-			if data[0] == 'n':
-				if data[1:] not in map_key_of_map_client_and_changes.keys():
-					server.close()
-					break
-				# rand a computer id
+			# new client
+			if data == 'Hi':
+				# rand a computer id and client id and send it to the client
 				computer_id = get_computer_id(map_key_of_map_client_and_changes)
-				map_key_of_map_client_and_changes[data[1:]][computer_id] = None
-				# send the computer its new id
-				try:
-					client_socket.send(computer_id.encode())
-					send_all(client_socket, data[1:])
-				except:
-					print("send folders failed")
+				key = get_client_id()
+				map_key_of_map_client_and_changes[key] = {computer_id: None}
+				client_socket.send(computer_id.encode())
+				client_socket.send(key.encode())
+				os.makedirs(key, exist_ok=True)
 
-			# existing computer
+				# receive from the client the back-up folder
+				try:
+					receive_folders(client_socket, key)
+				except:
+					print("receive folders failed")
 			else:
-				computer_id = client_socket.recv(7).decode()
-				# send the changes in the back-up folder of the client account
-				if map_key_of_map_client_and_changes[data[1:]][computer_id] is not None:
-					client_socket.send('updates from another computer'.encode() + b'\n')
-					client_socket.send(str(len(map_key_of_map_client_and_changes[data[1:]][computer_id])).encode() + b'\n')
-					for event in map_key_of_map_client_and_changes[data[1:]][computer_id]:
-						send_event(event[2], client_socket, data[1:], event[0], event[1])
+
+				# new computer of an existing client
+				if data[0] == 'n':
+					if data[1:] not in map_key_of_map_client_and_changes.keys():
+						server.close()
+						break
+					# rand a computer id
+					computer_id = get_computer_id(map_key_of_map_client_and_changes)
 					map_key_of_map_client_and_changes[data[1:]][computer_id] = None
+					# send the computer its new id
+					try:
+						client_socket.send(computer_id.encode())
+						send_all(client_socket, data[1:])
+					except:
+						print("send folders failed")
+
+				# existing computer
 				else:
-					client_socket.send('receive changes from client'.encode() + b'\n')
+					computer_id = client_socket.recv(7).decode()
+					# send the changes in the back-up folder of the client account
+					if map_key_of_map_client_and_changes[data[1:]][computer_id] is not None:
+						client_socket.send('updates from another computer'.encode() + b'\n')
+						client_socket.send(str(len(map_key_of_map_client_and_changes[data[1:]][computer_id])).encode() + b'\n')
+						for event in map_key_of_map_client_and_changes[data[1:]][computer_id]:
+							send_event(event[2], client_socket, data[1:], event[0], event[1])
+						map_key_of_map_client_and_changes[data[1:]][computer_id] = None
+					else:
+						client_socket.send('receive changes from client'.encode() + b'\n')
 
-				print(map_key_of_map_client_and_changes)
-				# receive the changes in the back-up folder of the client
-				size = int(readline(client_socket))
-				try:
-					receive_changes(client_socket, data[1:], size, map_key_of_map_client_and_changes, computer_id)
-				except:
-					print("receive changes failed")
-
+					print(map_key_of_map_client_and_changes)
+					# receive the changes in the back-up folder of the client
+					try:
+						size = int(readline(client_socket))
+						receive_changes(client_socket, data[1:], size, map_key_of_map_client_and_changes, computer_id)
+					except:
+						print("receive changes failed")
+		except:
+			pass
 		print('Client disconnected')
