@@ -59,7 +59,6 @@ if __name__ == "__main__":
 				except:
 					print("receive folders failed")
 			else:
-
 				# new computer of an existing client
 				if data[0] == 'n':
 					if data[1:] not in map_key_of_map_client_and_changes.keys():
