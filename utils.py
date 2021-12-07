@@ -128,7 +128,7 @@ def write_file(s, path, length):
     return -1
 
 
-# remove directory recursivly
+# remove directory recursively
 def remove_directory(directory):
     print(directory)
     for path, dirs, files in os.walk(directory):
@@ -151,6 +151,8 @@ def receive_delete(s, key_folder_name, separator, map_key_of_map_client_and_chan
         if name != '..' and name != '.':
             full_path = os.path.join(full_path, name)
     print(f'delete {path} + {key_folder_name} + {full_path}')
+    send_client_computers(map_key_of_map_client_and_changes, key_folder_name, computer_id, full_path, '', 'deleted')
+    add_to_event_list_before_receive(event_list_before_receive, full_path, '', 'deleted')
     try:
         # delete the directory or the file
         if os.path.isdir(full_path):
@@ -161,8 +163,6 @@ def receive_delete(s, key_folder_name, separator, map_key_of_map_client_and_chan
             os.remove(full_path)
     except:
         print("delete failed")
-    send_client_computers(map_key_of_map_client_and_changes, key_folder_name, computer_id, full_path, '', 'deleted')
-    add_to_event_list_before_receive(event_list_before_receive, full_path, '', 'deleted')
 
 
 # receive a report about a move in the client's folder
