@@ -127,19 +127,20 @@ def write_file(s, path, length):
             return 1
     return -1
 
-# remove directory recursivly
-def removedirectory(directory):
+
+# remove directory recursively
+def remove_directory(directory):
     print(directory)
     for path, dirs, files in os.walk(directory):
         for file1 in files:
             print(os.path.join(path, file1))
             os.remove(os.path.join(path, file1))
         for d in dirs:
-            print(os.path.join(path, file1))
-            removedirectory(os.path.join(path, d))
+            print(os.path.join(path, d))
+            remove_directory(os.path.join(path, d))
     print(directory)
     os.rmdir(directory)
-    
+
 
 # receive a report about a delete in the client's folder
 def receive_delete(s, key_folder_name, separator, map_key_of_map_client_and_changes=None, computer_id=0,
@@ -150,15 +151,18 @@ def receive_delete(s, key_folder_name, separator, map_key_of_map_client_and_chan
         if name != '..' and name != '.':
             full_path = os.path.join(full_path, name)
     print(f'delete {path} + {key_folder_name} + {full_path}')
-    # delete the directory or the file
-    if os.path.isdir(full_path):
-        print("dir")
-        removedirectory(full_path)
-    else:
-        print("file")
-        os.remove(full_path)
     send_client_computers(map_key_of_map_client_and_changes, key_folder_name, computer_id, full_path, '', 'deleted')
     add_to_event_list_before_receive(event_list_before_receive, full_path, '', 'deleted')
+    try:
+        # delete the directory or the file
+        if os.path.isdir(full_path):
+            print("dir")
+            remove_directory(full_path)
+        else:
+            print("file")
+            os.remove(full_path)
+    except:
+        print("delete failed")
 
 
 # receive a report about a move in the client's folder
@@ -181,7 +185,10 @@ def receive_move(s, key_folder_name, separator, map_key_of_map_client_and_change
     send_client_computers(map_key_of_map_client_and_changes, key_folder_name, computer_id, src, dst, 'moved')
     add_to_event_list_before_receive(event_list_before_receive, src, dst, 'moved')
 
-    os.rename(src, dst)
+    try:
+        os.rename(src, dst)
+    except:
+        print("move failed")
 
 
 # send about a file deleted
