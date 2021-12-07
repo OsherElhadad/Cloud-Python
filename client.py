@@ -9,25 +9,35 @@ from watchdog.events import PatternMatchingEventHandler
 chunk = 1000000
 event_list = list()
 last_event = None
+event_list_before_receive = list()
+
+
+def is_relevant(event, flag=False):
+    for e in event_list_before_receive:
+        print(e[0])
+        print(event.src_path)
+        if e[0] in event.src_path or e[1] in event.src_path:
+            return False
+        if flag and (e[0] in event.dest_path or e[1] in event.dest_path):
+            return False
+    return True
 
 
 # notify about creating a new file in the back-up folder
 def on_created(event):
-    global last_event, event_list
     if ('.goutputstream' not in event.src_path) and ('.swp' not in event.src_path):
-        if (last_event is not None) and (last_event[0] == event.src_path) and (last_event[2] == 'created'):
-            return
+        #if (last_event is not None) and (last_event[0] == event.src_path) and (last_event[2] == 'created'):
+        #    return
         event_list.append((event.src_path, '', 'created'))
-        last_event = (event.src_path, '', 'created')
+        #last_event = (event.src_path, '', 'created')
         print(f"Someone created {event.src_path}!")
 
 
 # notify about deleting a file in the back-up folder
 def on_deleted(event):
-    global last_event, event_list
     if ('.goutputstream' not in event.src_path) and ('.swp' not in event.src_path):
-        if (last_event is not None) and (last_event[0] == event.src_path) and (last_event[2] == 'deleted'):
-            return
+        #if (last_event is not None) and (last_event[0] == event.src_path) and (last_event[2] == 'deleted'):
+        #    return
         for e in reversed(event_list):
             if e[2] == 'modified' and e[0] == event.src_path:
                 event_list.remove(e)
@@ -35,49 +45,49 @@ def on_deleted(event):
                 event_list.remove(e)
                 return
         event_list.append((event.src_path, '', 'deleted'))
-        last_event = (event.src_path, '', 'deleted')
+        #last_event = (event.src_path, '', 'deleted')
         print(f"Someone deleted {event.src_path}!")
 
 
 # notify about modify a file in the back-up folder
 def on_modified(event):
-    global last_event, event_list
-    if (not os.path.isdir(event.src_path)) and ('.goutputstream' not in event.src_path) and (
-            '.swp' not in event.src_path):
+    if (not os.path.isdir(event.src_path)) and ('.goutputstream' not in event.src_path) \
+            and ('.swp' not in event.src_path):
         event_list.append((event.src_path, '', 'modified'))
-        last_event = (event.src_path, '', 'modified')
+        #last_event = (event.src_path, '', 'modified')
         print(f"hey, {event.src_path} has been modified")
 
 
 # notify about move a file in the back-up folder
 def on_moved(event):
-    global last_event, event_list
     if '.goutputstream' in event.src_path:
-        event_list.append((event.dest_path, '', 'modified'))
-        last_event = (event.dest_path, '', 'modified')
-        print(f"hey, {event.dest_path} has been modified")
+        #if is_relevant(event, True):
+            event_list.append((event.dest_path, '', 'modified'))
+            #last_event = (event.dest_path, '', 'modified')
+            print(f"hey, {event.dest_path} has been modified")
     else:
-        #if (last_event is not None) and ((last_event[0] + os.path.sep) in event.src_path) and (last_event[2] == 'moved'):
-        #    print(f"not added moved {event.src_path} to {event.dest_path}")
-        #    return
-        if (last_event is not None) and (last_event[0] == event.src_path) and (last_event[1] == event.dest_path) and\
-                (last_event[2] == 'moved'):
-            return
-        length = len(event_list)
-        for i in range(length):
-            if event_list[length - i - 1][2] == 'modified' and event_list[length - i - 1][0] == event.src_path:
-                l = list(event_list[length - i - 1])
-                l[0] = event.dest_path
-                event_list[length - i - 1] = tuple(l)
+        #if is_relevant(event, True):
+            #if (last_event is not None) and ((last_event[0] + os.path.sep) in event.src_path) and (last_event[2] == 'moved'):
+            #    print(f"not added moved {event.src_path} to {event.dest_path}")
+            #    return
+            #if (last_event is not None) and (last_event[0] == event.src_path) and (last_event[1] == event.dest_path) and\
+            #        (last_event[2] == 'moved'):
+            #    return
+            length = len(event_list)
+            for i in range(length):
+                if event_list[length - i - 1][2] == 'modified' and event_list[length - i - 1][0] == event.src_path:
+                    l = list(event_list[length - i - 1])
+                    l[0] = event.dest_path
+                    event_list[length - i - 1] = tuple(l)
 
-            if event_list[length - i - 1][2] == 'created' and event_list[length - i - 1][0] == event.src_path:
-                l = list(event_list[length - i - 1])
-                l[0] = event.dest_path
-                event_list[length - i - 1] = tuple(l)
-                return
-        event_list.append((event.src_path, event.dest_path, 'moved'))
-        last_event = (event.src_path, event.dest_path, 'moved')
-        print(f"someone moved {event.src_path} to {event.dest_path}")
+                if event_list[length - i - 1][2] == 'created' and event_list[length - i - 1][0] == event.src_path:
+                    l = list(event_list[length - i - 1])
+                    l[0] = event.dest_path
+                    event_list[length - i - 1] = tuple(l)
+                    return
+            event_list.append((event.src_path, event.dest_path, 'moved'))
+            #last_event = (event.src_path, event.dest_path, 'moved')
+            print(f"someone moved {event.src_path} to {event.dest_path}")
 
 
 # connect the computer in the first time to the server of an existing client
@@ -113,9 +123,9 @@ def first_connection_new_client(s, arguments):
 def get_socket(ip, port, time_sleep):
     sc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sc.connect((ip, int(port)))
-    sc.settimeout(int(time_sleep))
-    if int(time_sleep) < 3:
-        sc.settimeout(3)
+    #sc.settimeout(int(time_sleep))
+    #if int(time_sleep) < 5:
+    #    sc.settimeout(5)
     return sc
 
 
@@ -154,6 +164,8 @@ if __name__ == "__main__":
             s.close()
             time.sleep(int(time_sleep))
             s = get_socket(ip, port, time_sleep)
+            print("connected")
+            event_list_before_receive = list()
 
             try:
                 # connect the client again
@@ -196,11 +208,13 @@ if __name__ == "__main__":
             #print(event_list)
             try:
                 s.send(str(len(event_list)).encode() + b'\n')
-                for event in event_list:
+                copy_event_list = event_list.copy()
+                for event in copy_event_list:
+                    print(f"send {event[0]}")
                     send_event(event[2], s, directory, event[0], event[1])
+                    event_list.remove(event)
             except:
                 pass
-            event_list.clear()
 
     except KeyboardInterrupt:
         my_observer.stop()
