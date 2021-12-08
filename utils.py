@@ -31,11 +31,11 @@ def receive_folders(s, folder_name):
 
 # read a line from the socket
 def readline(s):
-    rec = s.recv(1).decode()
-    while '\n' not in rec and rec:
-        rec += s.recv(1).decode()
+    rec = s.recv(1)
+    while '\n'.encode() not in rec and rec:
+        rec += s.recv(1)
     if rec:
-        return rec[:-1]
+        return rec[:-1].decode()
     return ''
 
 
